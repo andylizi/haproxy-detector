@@ -18,38 +18,55 @@ package net.andylizi.haproxydetector.bungee;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
-import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
+import io.netty.util.AttributeKey;
 import net.andylizi.haproxydetector.HAProxyDetectorHandler;
+import net.md_5.bungee.api.config.ListenerInfo;
+import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
 
 import static net.andylizi.haproxydetector.HAProxyDetectorHandler.sneakyThrow;
 
-public final class BungeeMain extends Plugin {
+public final class BungeeMain extends Plugin implements Listener {
     static Logger logger;
-
-    Field serverChildField;
+    static Field serverChildField;
+    static MethodHandle proxyProtocolChecker;
+    static AttributeKey<ListenerInfo> listenerAttr;
     ChannelInitializer<Channel> originalChildInitializer;
 
     @Override
     public void onLoad() {
         logger = getLogger();
+
+        try {
+            proxyProtocolChecker = MethodHandles.lookup().findVirtual(ListenerInfo.class, "isProxyProtocol",
+                    MethodType.methodType(boolean.class));
+        } catch (NoSuchMethodException ignored) {
+            proxyProtocolChecker = null;
+        } catch (ReflectiveOperationException e) {
+            sneakyThrow(e);
+        }
     }
 
     @Override
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked", "deprecation" })
     public void onEnable() {
         try {
             Class<?> pipelineUtilsClass = Class.forName("net.md_5.bungee.netty.PipelineUtils", true,
                     Thread.currentThread().getContextClassLoader());
+            listenerAttr = (AttributeKey<ListenerInfo>) pipelineUtilsClass.getField("LISTENER").get(null);
 
             serverChildField = pipelineUtilsClass.getField("SERVER_CHILD");
             serverChildField.setAccessible(true);
@@ -63,6 +80,20 @@ public final class BungeeMain extends Plugin {
         } catch (ReflectiveOperationException e) {
             sneakyThrow(e);
             return;
+        }
+
+        if (proxyProtocolChecker != null) {
+            if (Stream.concat(getProxy().getConfigurationAdapter().getListeners().stream(), getProxy().getConfig().getListeners().stream())
+                    .noneMatch(l -> {
+                        try {
+                            return (boolean) proxyProtocolChecker.invokeExact(l);
+                        } catch (Throwable e) {
+                            sneakyThrow(e);
+                            return false;
+                        }
+                    })) {
+                logger.warning("Proxy protocol is disabled, the plugin may not work correctly!");
+            }
         }
     }
 
@@ -105,18 +136,42 @@ public final class BungeeMain extends Plugin {
                 return;
             }
 
+            if (proxyProtocolChecker != null) {
+                ListenerInfo listener = ch.attr(listenerAttr).get();
+
+                boolean isProxyProtocol;
+                try {
+                    isProxyProtocol = (boolean) proxyProtocolChecker.invokeExact(listener);
+                } catch (Throwable e) {
+                    sneakyThrow(e);
+                    return;
+                }
+                if (!isProxyProtocol) {
+                    return; // only proceed if listener has proxy protocol enabled
+                }
+            }
+
             ChannelPipeline pipeline = ch.pipeline();
             if (!ch.isOpen() || pipeline.get("haproxy-detector") != null)
                 return;
             
             HAProxyDetectorHandler detectorHandler = new HAProxyDetectorHandler(logger, null);
-            if (pipeline.get("haproxy-decoder") != null) {
-                pipeline.replace("haproxy-decoder", "haproxy-detector", detectorHandler);
-            } else if (pipeline.get(HAProxyMessageDecoder.class) != null) {
-                pipeline.replace(HAProxyMessageDecoder.class, "haproxy-detector", detectorHandler);
+            ChannelHandler oldHandler;
+            if ((oldHandler = pipeline.get("haproxy-decoder")) != null || 
+                    (oldHandler = getHandlerByTypeName(pipeline, "HAProxyMessageDecoder")) != null) {
+                pipeline.replace(oldHandler, "haproxy-detector", detectorHandler);
             } else {
                 throw new NoSuchElementException("HAProxy support not enabled");
             }
+        }
+
+        private static ChannelHandler getHandlerByTypeName(ChannelPipeline pipeline, String simpleName) {
+            for (Map.Entry<String, ChannelHandler> entry : pipeline) {
+                if (simpleName.equals(entry.getValue().getClass().getSimpleName())) {
+                    return entry.getValue();
+                }
+            }
+            return null;
         }
     }
 }
