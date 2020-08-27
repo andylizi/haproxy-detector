@@ -59,7 +59,7 @@ public class HAProxyDetectorHandler extends ByteToMessageDecoder {
                 case DETECTED:
                 default:
                     try {
-                        ctx.pipeline().replace(this, "haproxy-decoder", new HAProxyMessageDecoder(true));
+                        ctx.pipeline().replace(this, "haproxy-decoder", new HAProxyMessageDecoder());
                     } catch (IllegalArgumentException ignored) {
                         ctx.pipeline().remove(this); // decoder already exists
                     }

@@ -47,7 +47,8 @@ class HAProxyMessageHandler extends SimpleChannelInboundHandler<HAProxyMessage> 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, HAProxyMessage msg) throws Exception {
         SocketAddress realAddress = new InetSocketAddress(msg.sourceAddress(), msg.sourcePort());
-        BukkitMain.logger.log(Level.INFO, "Set remote address via proxy to {0}", realAddress);
+        BukkitMain.logger.log(Level.INFO, "Set remote address via proxy {0} -> {1}", 
+                new Object[] { ctx.channel().remoteAddress(), realAddress });
         try {
             addressSetter.invokeExact(realAddress);
         } catch (Throwable e) {
