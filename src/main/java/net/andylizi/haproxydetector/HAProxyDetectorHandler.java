@@ -60,7 +60,6 @@ public class HAProxyDetectorHandler extends ByteToMessageDecoder {
                 default:
                     try {
                         ctx.pipeline().replace(this, "haproxy-decoder", new HAProxyMessageDecoder(true));
-                        if (logger != null) logger.log(Level.INFO, "Proxy handler activated from {0}", ctx.channel().remoteAddress());
                     } catch (IllegalArgumentException ignored) {
                         // decoder already exists
                     }
