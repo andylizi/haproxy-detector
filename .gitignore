@@ -1,0 +1,31 @@
+# Maven
+target/
+dependency-reduced-pom.xml
+
+# Windows
+Thumbs.db
+[Dd]esktop.ini
+*.lnk
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.history/
+
+# Eclipse JDT
+.settings/
+.metadata
+.project
+.classpath
+.factorypath
+
+# IDEA
+.idea/
+*.iws
