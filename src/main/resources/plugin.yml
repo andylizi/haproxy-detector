@@ -3,6 +3,6 @@ main: net.andylizi.haproxydetector.bukkit.BukkitMain
 version: ${project.version}
 author: andylizi
 load: STARTUP
-depends: [ProtocolLib]
+depend: [ProtocolLib]
 awareness:
     - !@UTF8
