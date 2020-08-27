@@ -1,0 +1,5 @@
+name: HAProxyDetector
+main: net.andylizi.haproxydetector.bungee.BungeeMain
+version: ${project.version}
+author: andylizi
+softdepends: [BungeeProxy]

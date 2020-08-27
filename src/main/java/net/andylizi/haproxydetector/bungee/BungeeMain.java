@@ -14,29 +14,26 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 */
-package net.andylizi.haproxydetector;
+package net.andylizi.haproxydetector.bungee;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
-import io.netty.handler.codec.ByteToMessageDecoder;
-import io.netty.handler.codec.ProtocolDetectionResult;
+import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
-import io.netty.handler.codec.haproxy.HAProxyProtocolVersion;
+import net.andylizi.haproxydetector.HAProxyDetectorHandler;
 import net.md_5.bungee.api.plugin.Plugin;
 
-public final class HAProxyDetector extends Plugin {
+import static net.andylizi.haproxydetector.HAProxyDetectorHandler.sneakyThrow;
+
+public final class BungeeMain extends Plugin {
     static Logger logger;
 
     Field serverChildField;
@@ -107,60 +104,18 @@ public final class HAProxyDetector extends Plugin {
                 return;
             }
 
-            if (!ch.isOpen())
+            ChannelPipeline pipeline = ch.pipeline();
+            if (!ch.isOpen() || pipeline.get("haproxy-detector") != null)
                 return;
-
-            HAProxyDetectorHandler detectorHandler = new HAProxyDetectorHandler();
-            try {
-                ch.pipeline().replace("haproxy-decoder", "haproxy-detector", detectorHandler);
-            } catch (NoSuchElementException e) {
-                try {
-                    ch.pipeline().replace(HAProxyMessageDecoder.class, "haproxy-detector", detectorHandler);
-                } catch (NoSuchElementException e1) {
-                    throw new RuntimeException("HAProxy support not enabled", e1);
-                }
-            } catch (IllegalArgumentException ignored) {
-                // detector already exists
+            
+            HAProxyDetectorHandler detectorHandler = new HAProxyDetectorHandler(logger, null);
+            if (pipeline.get("haproxy-decoder") != null) {
+                pipeline.replace("haproxy-decoder", "haproxy-detector", detectorHandler);
+            } else if (pipeline.get(HAProxyMessageDecoder.class) != null) {
+                pipeline.replace(HAProxyMessageDecoder.class, "haproxy-detector", detectorHandler);
+            } else {
+                throw new NoSuchElementException("HAProxy support not enabled");
             }
         }
-    }
-
-    static class HAProxyDetectorHandler extends ByteToMessageDecoder {
-        {
-            setSingleDecode(true);
-        }
-
-        @Override
-        public void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
-            try {
-                ProtocolDetectionResult<HAProxyProtocolVersion> detectionResult = HAProxyMessageDecoder.detectProtocol(in);
-                switch (detectionResult.state()) {
-                    case NEEDS_MORE_DATA:
-                        return;
-                    case INVALID:
-                        ctx.pipeline().remove(this);
-                        break;
-                    case DETECTED:
-                    default:
-                        try {
-                            ctx.pipeline().replace(this, "haproxy-decoder", new HAProxyMessageDecoder(true));
-                            if (logger != null) logger.log(Level.INFO, "Proxy handler activated from {0}", ctx.channel().remoteAddress());
-                        } catch (IllegalArgumentException ignored) {
-                            // decoder already exists
-                        }
-                        break;
-                }
-            }  catch (Throwable t) {  // stop BC from eating my exceptions
-                if (logger != null)
-                    logger.log(Level.WARNING, "Exception while detecting proxy", t);
-                else 
-                    t.printStackTrace();
-            }
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <E extends Throwable> void sneakyThrow(Throwable e) throws E {
-        throw (E) e;
     }
 }

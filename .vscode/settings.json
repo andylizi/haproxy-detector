@@ -11,6 +11,12 @@
             "fileMatch": [
                 "**/plugin.yml"
             ],
+            "url": "https://json.schemastore.org/bukkit-plugin"
+        },
+        {
+            "fileMatch": [
+                "**/bungee.yml"
+            ],
             "url": "https://json.schemastore.org/bungee-plugin"
         }
     ]

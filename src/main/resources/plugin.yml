@@ -1,5 +1,8 @@
 name: HAProxyDetector
-main: net.andylizi.haproxydetector.HAProxyDetector
+main: net.andylizi.haproxydetector.bukkit.BukkitMain
 version: ${project.version}
 author: andylizi
-softdepends: [BungeeProxy]
+load: STARTUP
+depends: [ProtocolLib]
+awareness:
+    - !@UTF8
