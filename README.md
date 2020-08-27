@@ -1,6 +1,6 @@
 # HAProxyDetector
 
-This [BungeeCord](https://github.com/SpigotMC/BungeeCord/) plugin enables proxied and direct connections both at the same time. More infomation about [HAProxy](https://www.haproxy.org/) and its uses can be found [here](https://github.com/MinelinkNetwork/BungeeProxy/blob/master/README.md).
+This [BungeeCord](https://github.com/SpigotMC/BungeeCord/) (and now [Spigot](https://www.spigotmc.org/wiki/spigot/)) plugin enables proxied and direct connections both at the same time. More infomation about [HAProxy](https://www.haproxy.org/) and its uses can be found [here](https://github.com/MinelinkNetwork/BungeeProxy/blob/master/README.md).
 
 > Note: `proxy_protocol` needs to be enabled in BC config for this plugin to work.
 

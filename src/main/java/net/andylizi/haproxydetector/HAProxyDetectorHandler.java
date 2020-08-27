@@ -61,11 +61,14 @@ public class HAProxyDetectorHandler extends ByteToMessageDecoder {
                     try {
                         ctx.pipeline().replace(this, "haproxy-decoder", new HAProxyMessageDecoder(true));
                     } catch (IllegalArgumentException ignored) {
-                        // decoder already exists
+                        ctx.pipeline().remove(this); // decoder already exists
                     }
 
                     if (haproxyHandler != null) {
-                        ctx.pipeline().addAfter("haproxy-decoder", "haproxy-handler", haproxyHandler);
+                        try {
+                            ctx.pipeline().addAfter("haproxy-decoder", "haproxy-handler", haproxyHandler);
+                        } catch (IllegalArgumentException ignored) {
+                        }
                     }
                     break;
             }
