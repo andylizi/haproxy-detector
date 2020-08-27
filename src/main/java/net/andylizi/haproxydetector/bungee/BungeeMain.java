@@ -31,6 +31,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
+import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.util.AttributeKey;
 import net.andylizi.haproxydetector.HAProxyDetectorHandler;
 import net.md_5.bungee.api.config.ListenerInfo;
@@ -158,20 +159,11 @@ public final class BungeeMain extends Plugin implements Listener {
             HAProxyDetectorHandler detectorHandler = new HAProxyDetectorHandler(logger, null);
             ChannelHandler oldHandler;
             if ((oldHandler = pipeline.get("haproxy-decoder")) != null || 
-                    (oldHandler = getHandlerByTypeName(pipeline, "HAProxyMessageDecoder")) != null) {
+                    (oldHandler = pipeline.get(HAProxyMessageDecoder.class)) != null) {
                 pipeline.replace(oldHandler, "haproxy-detector", detectorHandler);
             } else {
                 throw new NoSuchElementException("HAProxy support not enabled");
             }
-        }
-
-        private static ChannelHandler getHandlerByTypeName(ChannelPipeline pipeline, String simpleName) {
-            for (Map.Entry<String, ChannelHandler> entry : pipeline) {
-                if (simpleName.equals(entry.getValue().getClass().getSimpleName())) {
-                    return entry.getValue();
-                }
-            }
-            return null;
         }
     }
 }

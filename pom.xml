@@ -39,12 +39,6 @@
                     <minmizeJar>true</minmizeJar>
                     <shadedArtifactAttached>false</shadedArtifactAttached>
                     <createDependencyReducedPom>false</createDependencyReducedPom>
-                    <relocations>
-                        <relocation>
-                            <pattern>io.netty.handler.codec.haproxy</pattern>
-                            <shadedPattern>net.andylizi.haproxydetector.codec</shadedPattern>
-                        </relocation>
-                    </relocations>
                 </configuration>
             </plugin>
         </plugins>
