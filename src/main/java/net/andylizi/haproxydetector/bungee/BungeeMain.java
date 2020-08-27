@@ -71,6 +71,7 @@ public final class BungeeMain extends Plugin {
         if (serverChildField != null && originalChildInitializer != null) {
             try {
                 serverChildField.set(null, originalChildInitializer);
+                originalChildInitializer = null;
             } catch (ReflectiveOperationException ignored) {
             }
         }

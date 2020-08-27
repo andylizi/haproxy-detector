@@ -1,0 +1,55 @@
+package net.andylizi.haproxydetector.bukkit;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+
+import com.comphenix.protocol.reflect.FuzzyReflection;
+import com.comphenix.protocol.utility.MinecraftReflection;
+
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.haproxy.HAProxyMessage;
+
+import static net.andylizi.haproxydetector.HAProxyDetectorHandler.sneakyThrow;
+
+class HAProxyMessageHandler extends SimpleChannelInboundHandler<HAProxyMessage> {
+    private static MethodHandle freeAddressSetter;
+    private final MethodHandle addressSetter;
+
+    public HAProxyMessageHandler(Object networkManager) {
+        if (freeAddressSetter == null) {
+            synchronized (HAProxyMessageHandler.class) {
+                if (freeAddressSetter == null) {
+                    Field f = FuzzyReflection.fromClass(MinecraftReflection.getNetworkManagerClass(), true)
+                            .getFieldByType("socketAddress", SocketAddress.class);
+                    try {
+                        f.setAccessible(true);
+                    } catch (Throwable ignored) {
+                    }
+
+                    try {
+                        freeAddressSetter = MethodHandles.lookup().unreflectSetter(f);
+                    } catch (IllegalAccessException e) {
+                        sneakyThrow(e);
+                        throw new AssertionError("dead code");
+                    }
+                }
+            }
+        }
+
+        this.addressSetter = freeAddressSetter.bindTo(networkManager);
+    }
+
+    @Override
+    public void channelRead0(ChannelHandlerContext ctx, HAProxyMessage msg) throws Exception {
+        SocketAddress realAddress = new InetSocketAddress(msg.sourceAddress(), msg.sourcePort());
+        try {
+            addressSetter.invokeExact(realAddress);
+        } catch (Throwable e) {
+            sneakyThrow(e);
+        }
+    }
+}

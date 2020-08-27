@@ -4,7 +4,7 @@
 
     <groupId>net.andylizi</groupId>
     <artifactId>haproxy-detector</artifactId>
-    <version>1.1</version>
+    <version>2.0</version>
     <packaging>jar</packaging>
 
     <name>HAProxyDetector</name>
@@ -23,6 +23,31 @@
                 <filtering>true</filtering>
             </resource>
         </resources>
+        <plugins>
+            <plugin>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.4</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <minmizeJar>true</minmizeJar>
+                    <shadedArtifactAttached>false</shadedArtifactAttached>
+                    <createDependencyReducedPom>false</createDependencyReducedPom>
+                    <relocations>
+                        <relocation>
+                            <pattern>io.netty.handler.codec.haproxy</pattern>
+                            <shadedPattern>net.andylizi.haproxydetector.codec</shadedPattern>
+                        </relocation>
+                    </relocations>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
     <repositories>
@@ -31,9 +56,9 @@
             <url>https://oss.sonatype.org/content/groups/public/</url>
         </repository>
         <repository>
-			<id>spigot-repo</id>
-			<url>https://hub.spigotmc.org/nexus/content/groups/public/</url>
-		</repository>
+            <id>spigot-repo</id>
+            <url>https://hub.spigotmc.org/nexus/content/groups/public/</url>
+        </repository>
         <repository>
             <id>dmulloy2-repo</id>
             <url>https://repo.dmulloy2.net/nexus/repository/public/</url>
@@ -45,7 +70,13 @@
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-haproxy</artifactId>
             <version>4.1.49.Final</version>
-            <scope>provided</scope>
+            <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -56,11 +87,11 @@
         </dependency>
 
         <dependency>
-			<groupId>org.spigotmc</groupId>
-			<artifactId>spigot-api</artifactId>
-			<version>1.16.2-R0.1-SNAPSHOT</version>
-			<scope>provided</scope>
-		</dependency>
+            <groupId>org.spigotmc</groupId>
+            <artifactId>spigot-api</artifactId>
+            <version>1.16.2-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>com.comphenix.protocol</groupId>
             <artifactId>ProtocolLib</artifactId>
