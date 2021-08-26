@@ -37,6 +37,7 @@ import net.andylizi.haproxydetector.ReflectionUtil;
 import net.md_5.bungee.api.config.ListenerInfo;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
+import org.bstats.bungeecord.Metrics;
 
 import static net.andylizi.haproxydetector.ReflectionUtil.sneakyThrow;
 
@@ -93,6 +94,8 @@ public final class BungeeMain extends Plugin implements Listener {
                 logger.warning("Proxy protocol is disabled, the plugin may not work correctly!");
             }
         }
+
+        new Metrics(this, 12605);
     }
 
     @Override

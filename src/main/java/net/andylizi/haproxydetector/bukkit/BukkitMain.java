@@ -10,6 +10,7 @@ import com.comphenix.protocol.injector.netty.ProtocolInjector;
 import com.comphenix.protocol.reflect.FuzzyReflection;
 
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bstats.bukkit.Metrics;
 
 import net.andylizi.haproxydetector.ReflectionUtil;
 import static net.andylizi.haproxydetector.ReflectionUtil.sneakyThrow;
@@ -46,6 +47,8 @@ public final class BukkitMain extends JavaPlugin {
         } catch (ReflectiveOperationException e) {
             sneakyThrow(e);
         }
+
+        new Metrics(this, 12604);
     }
 
     @Override
