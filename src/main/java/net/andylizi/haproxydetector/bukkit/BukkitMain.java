@@ -11,7 +11,8 @@ import com.comphenix.protocol.reflect.FuzzyReflection;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
-import static net.andylizi.haproxydetector.HAProxyDetectorHandler.sneakyThrow;
+import net.andylizi.haproxydetector.ReflectionUtil;
+import static net.andylizi.haproxydetector.ReflectionUtil.sneakyThrow;
 
 public final class BukkitMain extends JavaPlugin {
     static Logger logger;
@@ -40,7 +41,7 @@ public final class BukkitMain extends JavaPlugin {
 
             oldFactory = (InjectionFactory) injectorFactoryField.get(injector);
             InjectionFactory newFactory = new HAProxyInjectorFactory(oldFactory.getPlugin());
-            copyState(InjectionFactory.class, oldFactory, newFactory);
+            ReflectionUtil.copyState(InjectionFactory.class, oldFactory, newFactory);
             injectorFactoryField.set(injector, newFactory);
         } catch (ReflectiveOperationException e) {
             sneakyThrow(e);
@@ -52,18 +53,11 @@ public final class BukkitMain extends JavaPlugin {
         if (injectorFactoryField != null && injector != null && oldFactory != null) {
             try {
                 InjectionFactory currentFactory = (InjectionFactory) injectorFactoryField.get(injector);
-                copyState(InjectionFactory.class, currentFactory, oldFactory);
+                ReflectionUtil.copyState(InjectionFactory.class, currentFactory, oldFactory);
                 injectorFactoryField.set(injector, oldFactory);
                 oldFactory = null;
             } catch (ReflectiveOperationException ignored) {
             }
-        }
-    }
-
-    private static <T> void copyState(Class<? super T> templateClass, T src, T dst) throws ReflectiveOperationException {
-        for (Field f : templateClass.getDeclaredFields()) {
-            f.setAccessible(true);
-            f.set(dst, f.get(src));
         }
     }
 }

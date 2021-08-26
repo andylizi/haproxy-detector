@@ -31,11 +31,6 @@ import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.handler.codec.haproxy.HAProxyProtocolVersion;
 
 public class HAProxyDetectorHandler extends ByteToMessageDecoder {
-    @SuppressWarnings("unchecked")
-    public static <E extends Throwable> void sneakyThrow(Throwable e) throws E {
-        throw (E) e;
-    }
-
     private final Logger logger;
     private final ChannelHandler haproxyHandler;
 

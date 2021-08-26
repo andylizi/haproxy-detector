@@ -5,3 +5,5 @@ This [BungeeCord](https://github.com/SpigotMC/BungeeCord/) (and now [Spigot](htt
 > Note: `proxy_protocol` needs to be enabled in BC config for this plugin to work.
 
 Older versions of BC can in theory use [BungeeProxy](https://github.com/MinelinkNetwork/BungeeProxy) in parallel with this plugin. This combination haven't been tested yet. Feedback is welcomed.
+
+If errors like `NoClassDefFoundError: sun.misc.Unsafe`, `InaccessibleObjectException` and such are encountered, please add `--add-opens java.base/java.lang.invoke=ALL-UNNAMED` to JVM arguments.

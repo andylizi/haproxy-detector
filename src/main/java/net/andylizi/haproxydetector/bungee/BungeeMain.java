@@ -33,11 +33,12 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.util.AttributeKey;
 import net.andylizi.haproxydetector.HAProxyDetectorHandler;
+import net.andylizi.haproxydetector.ReflectionUtil;
 import net.md_5.bungee.api.config.ListenerInfo;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
 
-import static net.andylizi.haproxydetector.HAProxyDetectorHandler.sneakyThrow;
+import static net.andylizi.haproxydetector.ReflectionUtil.sneakyThrow;
 
 public final class BungeeMain extends Plugin implements Listener {
     static Logger logger;
@@ -69,22 +70,19 @@ public final class BungeeMain extends Plugin implements Listener {
             listenerAttr = (AttributeKey<ListenerInfo>) pipelineUtilsClass.getField("LISTENER").get(null);
 
             serverChildField = pipelineUtilsClass.getField("SERVER_CHILD");
+            ReflectionUtil.setModifiers(serverChildField, serverChildField.getModifiers() & ~Modifier.FINAL);
             serverChildField.setAccessible(true);
-
-            Field modifiersField = Field.class.getDeclaredField("modifiers");
-            modifiersField.setAccessible(true);
-            modifiersField.setInt(serverChildField, serverChildField.getModifiers() & ~Modifier.FINAL);
 
             originalChildInitializer = (ChannelInitializer<Channel>) serverChildField.get(null);
             serverChildField.set(null, new HAProxyDetectorInitializer<Channel>(originalChildInitializer));
-        } catch (ReflectiveOperationException e) {
+        } catch (Throwable e) {
             sneakyThrow(e);
             return;
         }
 
         if (proxyProtocolChecker != null) {
-            if (Stream.concat(getProxy().getConfigurationAdapter().getListeners().stream(), getProxy().getConfig().getListeners().stream())
-                    .noneMatch(l -> {
+            if (Stream.concat(getProxy().getConfigurationAdapter().getListeners().stream(),
+                    getProxy().getConfig().getListeners().stream()).noneMatch(l -> {
                         try {
                             return (boolean) proxyProtocolChecker.invokeExact(l);
                         } catch (Throwable e) {
@@ -157,11 +155,11 @@ public final class BungeeMain extends Plugin implements Listener {
 
             HAProxyDetectorHandler detectorHandler = new HAProxyDetectorHandler(logger, null);
             ChannelHandler oldHandler;
-            if ((oldHandler = pipeline.get("haproxy-decoder")) != null || 
-                    (oldHandler = pipeline.get(HAProxyMessageDecoder.class)) != null) {
+            if ((oldHandler = pipeline.get("haproxy-decoder")) != null
+                    || (oldHandler = pipeline.get(HAProxyMessageDecoder.class)) != null) {
                 pipeline.replace(oldHandler, "haproxy-detector", detectorHandler);
             } else {
-                throw new NoSuchElementException("HAProxy support not enabled");
+                throw new NoSuchElementException("HAProxy support is not enabled");
             }
         }
     }
