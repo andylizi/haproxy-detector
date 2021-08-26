@@ -22,7 +22,6 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.logging.Logger;
 import java.util.stream.Stream;

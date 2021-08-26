@@ -12,10 +12,12 @@ import com.comphenix.protocol.utility.MinecraftReflection;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.handler.codec.haproxy.HAProxyMessage;
 
 import static net.andylizi.haproxydetector.HAProxyDetectorHandler.sneakyThrow;
 
+@Sharable
 class HAProxyMessageHandler extends SimpleChannelInboundHandler<HAProxyMessage> {
     private static MethodHandle freeAddressSetter;
     private final MethodHandle addressSetter;

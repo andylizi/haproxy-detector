@@ -17,12 +17,14 @@
 package net.andylizi.haproxydetector;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.ProtocolDetectionResult;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
@@ -58,16 +60,25 @@ public class HAProxyDetectorHandler extends ByteToMessageDecoder {
                     break;
                 case DETECTED:
                 default:
+                    ChannelPipeline pipeline = ctx.pipeline();
                     try {
-                        ctx.pipeline().replace(this, "haproxy-decoder", new HAProxyMessageDecoder());
+                        pipeline.replace(this, "haproxy-decoder", new HAProxyMessageDecoder());
                     } catch (IllegalArgumentException ignored) {
-                        ctx.pipeline().remove(this); // decoder already exists
+                        pipeline.remove(this); // decoder already exists
                     }
 
                     if (haproxyHandler != null) {
                         try {
-                            ctx.pipeline().addAfter("haproxy-decoder", "haproxy-handler", haproxyHandler);
+                            pipeline.addAfter("haproxy-decoder", "haproxy-handler", haproxyHandler);
                         } catch (IllegalArgumentException ignored) {
+                        } catch (NoSuchElementException e) {  // Not sure why but...
+                            if (pipeline.get("timeout") != null) {
+                                pipeline.addAfter("timeout", "haproxy-decoder", new HAProxyMessageDecoder());
+                                pipeline.addAfter("timeout", "haproxy-handler", haproxyHandler);
+                            } else {
+                                pipeline.addFirst("haproxy-handler", haproxyHandler);
+                                pipeline.addFirst("haproxy-decoder", new HAProxyMessageDecoder());
+                            }
                         }
                     }
                     break;
