@@ -154,7 +154,7 @@ public final class BungeeMain extends Plugin implements Listener {
             ChannelPipeline pipeline = ch.pipeline();
             if (!ch.isOpen() || pipeline.get("haproxy-detector") != null)
                 return;
-            
+
             HAProxyDetectorHandler detectorHandler = new HAProxyDetectorHandler(logger, null);
             ChannelHandler oldHandler;
             if ((oldHandler = pipeline.get("haproxy-decoder")) != null || 
