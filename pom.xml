@@ -44,7 +44,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <minmizeJar>false</minmizeJar>
+                    <minimizeJar>false</minimizeJar>
                     <shadedArtifactAttached>false</shadedArtifactAttached>
                     <createDependencyReducedPom>false</createDependencyReducedPom>
                     <relocations>
