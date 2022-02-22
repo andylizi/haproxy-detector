@@ -16,8 +16,6 @@
 */
 package net.andylizi.haproxydetector;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -49,16 +47,17 @@ public class HAProxyDetectorHandler extends ByteToMessageDecoder {
     @Override
     public void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
         try {
+            SocketAddress addr = ctx.channel().remoteAddress();
             ProtocolDetectionResult<HAProxyProtocolVersion> detectionResult = HAProxyMessageDecoder.detectProtocol(in);
             switch (detectionResult.state()) {
                 case NEEDS_MORE_DATA:
                     return;
                 case INVALID:
+                    ConnectionStats.trackConnection(addr, false);
                     ctx.pipeline().remove(this);
                     break;
                 case DETECTED:
                 default:
-                    SocketAddress addr = ctx.channel().remoteAddress();
                     if (!ProxyWhitelist.check(addr)) {
                         try {
                             ProxyWhitelist.getWarningFor(addr).ifPresent(logger::info);
@@ -68,6 +67,7 @@ public class HAProxyDetectorHandler extends ByteToMessageDecoder {
                         return;
                     }
 
+                    ConnectionStats.trackConnection(addr, true);
                     ChannelPipeline pipeline = ctx.pipeline();
                     try {
                         pipeline.replace(this, "haproxy-decoder", new HAProxyMessageDecoder());

@@ -3,6 +3,7 @@ package net.andylizi.haproxydetector.bukkit;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.comphenix.protocol.ProtocolLibrary;
@@ -11,7 +12,12 @@ import com.comphenix.protocol.injector.netty.InjectionFactory;
 import com.comphenix.protocol.injector.netty.ProtocolInjector;
 import com.comphenix.protocol.reflect.FuzzyReflection;
 
+import net.andylizi.haproxydetector.ConnectionStats;
 import net.andylizi.haproxydetector.ProxyWhitelist;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bstats.bukkit.Metrics;
 
@@ -67,7 +73,26 @@ public final class BukkitMain extends JavaPlugin {
             sneakyThrow(e);
         }
 
-        new Metrics(this, 12604);
+        try {
+            class TrackingStatsListener implements Listener {
+                @EventHandler
+                public void onLogin(PlayerLoginEvent event) {
+                    ConnectionStats.trackLogin(event.getPlayer().getAddress());
+                }
+
+                @EventHandler
+                public void onDisconnect(PlayerQuitEvent event) {
+                    ConnectionStats.trackDisconnect(event.getPlayer().getAddress());
+                }
+            }
+
+            getServer().getPluginManager().registerEvents(new TrackingStatsListener(), this);
+
+            Metrics metrics = new Metrics(this, 12604);
+            ConnectionStats.createCharts().forEach(metrics::addCustomChart);
+        } catch (Throwable t) {
+            logger.log(Level.WARNING, "Failed to start metrics", t);
+        }
     }
 
     @Override
