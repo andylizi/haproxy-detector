@@ -98,6 +98,9 @@
                                 <include>**/*.class</include>
                                 <include>META-INF/**</include>
                             </includes>
+                            <excludes>
+                                <exclude>META-INF/MANIFEST.MF</exclude>
+                            </excludes>
                         </filter>
                     </filters>
                 </configuration>
