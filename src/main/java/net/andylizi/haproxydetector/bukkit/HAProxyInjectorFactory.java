@@ -15,6 +15,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelPipeline;
 import net.andylizi.haproxydetector.HAProxyDetectorHandler;
+import org.jetbrains.annotations.NotNull;
 
 class HAProxyInjectorFactory extends InjectionFactory {
     public HAProxyInjectorFactory(Plugin plugin) {
@@ -22,7 +23,7 @@ class HAProxyInjectorFactory extends InjectionFactory {
     }
 
     @Override
-    public Injector fromChannel(Channel channel, ChannelListener listener, TemporaryPlayerFactory playerFactory) {
+    public @NotNull Injector fromChannel(Channel channel, ChannelListener listener, TemporaryPlayerFactory playerFactory) {
         ChannelPipeline pipeline = channel.pipeline();
         if (pipeline.get("haproxy-detector") == null) {
             Class<?> networkManagerClass = MinecraftReflection.getNetworkManagerClass();

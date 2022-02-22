@@ -52,6 +52,7 @@ public final class ReflectionUtil {
     public static boolean trySetAccessible(AccessibleObject obj) {
         try {
             try {
+                //noinspection JavaReflectionMemberAccess
                 return (boolean) AccessibleObject.class.getMethod("trySetAccessible").invoke(obj);
             } catch (NoSuchMethodException e) {
                 obj.setAccessible(true);

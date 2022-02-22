@@ -47,7 +47,7 @@ public class HAProxyDetectorHandler extends ByteToMessageDecoder {
     }
 
     @Override
-    public void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+    public void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
         try {
             ProtocolDetectionResult<HAProxyProtocolVersion> detectionResult = HAProxyMessageDecoder.detectProtocol(in);
             switch (detectionResult.state()) {
