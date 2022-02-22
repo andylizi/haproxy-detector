@@ -18,7 +18,7 @@ import static net.andylizi.haproxydetector.ReflectionUtil.sneakyThrow;
 
 @Sharable
 class HAProxyMessageHandler extends SimpleChannelInboundHandler<HAProxyMessage> {
-    private static MethodHandle freeAddressSetter;
+    private static volatile MethodHandle freeAddressSetter;
     private final MethodHandle addressSetter;
 
     public HAProxyMessageHandler(Object networkManager) {

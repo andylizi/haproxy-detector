@@ -84,4 +84,13 @@ public final class ReflectionUtil {
             f.set(dst, f.get(src));
         }
     }
+
+    public static Field getFirstDeclaringFieldByType(Class<?> cls, Class<?> type) throws ReflectiveOperationException {
+        for (Field field : cls.getDeclaredFields()) {
+            if (type.equals(field.getType())) {
+                return field;
+            }
+        }
+        throw new NoSuchFieldException("field with type " + type.getName() + " in " + cls.getName());
+    }
 }

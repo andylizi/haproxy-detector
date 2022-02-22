@@ -35,7 +35,7 @@ public final class BukkitMain extends JavaPlugin {
                     .getFieldByType("nettyInjector", ProtocolInjector.class);
             injectorField.setAccessible(true);
             injector = (ProtocolInjector) injectorField.get(pm);
-            
+
             injectorFactoryField = FuzzyReflection.fromObject(injector, true)
                     .getFieldByType("factory", InjectionFactory.class);
             injectorFactoryField.setAccessible(true);

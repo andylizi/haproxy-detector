@@ -4,7 +4,8 @@
 
     <groupId>net.andylizi</groupId>
     <artifactId>haproxy-detector</artifactId>
-    <version>2.2</version>
+    <!-- keep in sync with VelocityMain -->
+    <version>2.2.0</version>
     <packaging>jar</packaging>
 
     <name>HAProxyDetector</name>
@@ -68,7 +69,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <minimizeJar>false</minimizeJar>
+                    <minimizeJar>true</minimizeJar>
                     <shadedArtifactAttached>false</shadedArtifactAttached>
                     <createDependencyReducedPom>false</createDependencyReducedPom>
                     <relocations>
@@ -110,6 +111,10 @@
             <id>dmulloy2-repo</id>
             <url>https://repo.dmulloy2.net/nexus/repository/public/</url>
         </repository>
+        <repository>
+            <id>velocity</id>
+            <url>https://nexus.velocitypowered.com/repository/maven-public/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -139,6 +144,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.bstats</groupId>
+            <artifactId>bstats-velocity</artifactId>
+            <version>${bstats.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>net.md-5</groupId>
             <artifactId>bungeecord-api</artifactId>
             <version>1.16-R0.4</version>
@@ -156,6 +167,13 @@
             <groupId>com.comphenix.protocol</groupId>
             <artifactId>ProtocolLib</artifactId>
             <version>4.7.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.velocitypowered</groupId>
+            <artifactId>velocity-api</artifactId>
+            <version>3.0.1</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
