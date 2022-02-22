@@ -16,12 +16,14 @@
 */
 package net.andylizi.haproxydetector.bungee;
 
+import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.file.Path;
 import java.util.NoSuchElementException;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -33,6 +35,7 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.util.AttributeKey;
 import net.andylizi.haproxydetector.HAProxyDetectorHandler;
+import net.andylizi.haproxydetector.ProxyWhitelist;
 import net.andylizi.haproxydetector.ReflectionUtil;
 import net.md_5.bungee.api.config.ListenerInfo;
 import net.md_5.bungee.api.plugin.Listener;
@@ -66,6 +69,22 @@ public final class BungeeMain extends Plugin implements Listener {
     @SuppressWarnings({ "unchecked", "deprecation" })
     public void onEnable() {
         try {
+            Path path = this.getDataFolder().toPath().resolve("whitelist.conf");
+            ProxyWhitelist whitelist = ProxyWhitelist.loadOrDefault(path).orElse(null);
+            if (whitelist == null) {
+                logger.warning("!!! ==============================");
+                logger.warning("!!! Proxy whitelist is disabled in the config.");
+                logger.warning("!!! This is EXTREMELY DANGEROUS, don't do this in production!");
+                logger.warning("!!! ==============================");
+            } else if (whitelist.size() == 0) {
+                logger.warning("Proxy whitelist is empty. This will disallow all proxies!");
+            }
+            ProxyWhitelist.whitelist = whitelist;
+        } catch (IOException e) {
+            throw new RuntimeException("failed to load proxy whitelist", e);
+        }
+
+        try {
             Class<?> pipelineUtilsClass = Class.forName("net.md_5.bungee.netty.PipelineUtils", true,
                     Thread.currentThread().getContextClassLoader());
             listenerAttr = (AttributeKey<ListenerInfo>) pipelineUtilsClass.getField("LISTENER").get(null);
@@ -75,7 +94,7 @@ public final class BungeeMain extends Plugin implements Listener {
             serverChildField.setAccessible(true);
 
             originalChildInitializer = (ChannelInitializer<Channel>) serverChildField.get(null);
-            serverChildField.set(null, new HAProxyDetectorInitializer<Channel>(originalChildInitializer));
+            serverChildField.set(null, new DetectorInitializer<>(originalChildInitializer));
         } catch (Throwable e) {
             sneakyThrow(e);
             return;
@@ -109,7 +128,7 @@ public final class BungeeMain extends Plugin implements Listener {
         }
     }
 
-    static class HAProxyDetectorInitializer<C extends Channel> extends ChannelInitializer<C> {
+    static class DetectorInitializer<C extends Channel> extends ChannelInitializer<C> {
         static MethodHandle initChannelHandle;
 
         static {
@@ -124,12 +143,12 @@ public final class BungeeMain extends Plugin implements Listener {
 
         private final MethodHandle delegateInitHandle;
 
-        public HAProxyDetectorInitializer(ChannelInitializer<C> delegateInitializer) {
+        public DetectorInitializer(ChannelInitializer<C> delegateInitializer) {
             delegateInitHandle = initChannelHandle.bindTo(delegateInitializer);
         }
 
         @Override
-        public void initChannel(C ch) throws Exception {
+        public void initChannel(C ch) {
             try {
                 delegateInitHandle.invoke(ch);
             } catch (Throwable e) {

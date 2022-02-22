@@ -8,13 +8,22 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.ProtocolDetectionResult;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.handler.codec.haproxy.HAProxyProtocolVersion;
+import net.andylizi.haproxydetector.ProxyWhitelist;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
 
+import java.net.SocketAddress;
 import java.util.List;
 
-@ChannelHandler.Sharable
 public class HAProxyDetectorHandler extends ByteToMessageDecoder {
     {
         setSingleDecode(true);
+    }
+
+    private final Logger logger;
+
+    public HAProxyDetectorHandler(@NotNull Logger logger) {
+        this.logger = logger;
     }
 
     @Override
@@ -28,6 +37,16 @@ public class HAProxyDetectorHandler extends ByteToMessageDecoder {
                 break;
             case DETECTED:
             default:
+                SocketAddress addr = ctx.channel().remoteAddress();
+                if (!ProxyWhitelist.check(addr)) {
+                    try {
+                        ProxyWhitelist.getWarningFor(addr).ifPresent(logger::info);
+                    } finally {
+                        ctx.close();
+                    }
+                    return;
+                }
+
                 ChannelPipeline pipeline = ctx.pipeline();
                 try {
                     pipeline.replace(this, "haproxy-decoder", new HAProxyMessageDecoder());

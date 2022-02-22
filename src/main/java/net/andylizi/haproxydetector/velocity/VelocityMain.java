@@ -4,20 +4,25 @@ import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
+import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.config.ProxyConfig;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
+import net.andylizi.haproxydetector.ProxyWhitelist;
 import net.andylizi.haproxydetector.ReflectionUtil;
 import org.bstats.velocity.Metrics;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
+import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
 import java.util.NoSuchElementException;
 
 import static net.andylizi.haproxydetector.ReflectionUtil.sneakyThrow;
@@ -29,22 +34,36 @@ import static net.andylizi.haproxydetector.ReflectionUtil.sneakyThrow;
 public final class VelocityMain {
     private final ProxyServer server;
     private final Logger logger;
+    private final Path dataDirectory;
     private final Metrics.Factory metricsFactory;
 
     @Inject
-    public VelocityMain(ProxyServer server, Logger logger, Metrics.Factory metricsFactory) {
+    public VelocityMain(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory, Metrics.Factory metricsFactory) {
         this.server = server;
         this.logger = logger;
+        this.dataDirectory = dataDirectory;
         this.metricsFactory = metricsFactory;
     }
 
     @Subscribe
-    public void onProxyInitialization(ProxyInitializeEvent event) throws ReflectiveOperationException {
+    public void onProxyInitialization(ProxyInitializeEvent event) throws ReflectiveOperationException, IOException {
         if (!isProxyEnabled()) {
             logger.error("!!! ==============================");
-            logger.error("!!! Proxy protocol is not enabled, the plugin will not work correctly!");
+            logger.error("!!! Proxy protocol is not enabled,");
+            logger.error("!!! the plugin will not work correctly!");
             logger.error("!!! ==============================");
         }
+
+        ProxyWhitelist whitelist = ProxyWhitelist.loadOrDefault(this.dataDirectory.resolve("whitelist.conf")).orElse(null);
+        if (whitelist == null) {
+            logger.warn("!!! ==============================");
+            logger.warn("!!! Proxy whitelist is disabled in the config.");
+            logger.warn("!!! This is EXTREMELY DANGEROUS, don't do this in production!");
+            logger.warn("!!! ==============================");
+        } else if (whitelist.size() == 0) {
+            logger.warn("Proxy whitelist is empty. This will disallow all proxies!");
+        }
+        ProxyWhitelist.whitelist = whitelist;
 
         metricsFactory.make(this, 14442);
         inject();
@@ -68,12 +87,20 @@ public final class VelocityMain {
         @SuppressWarnings("unchecked") ChannelInitializer<Channel> originalInitializer =
             (ChannelInitializer<Channel>) holderType.getMethod("get").invoke(holder);
 
-        logger.info("Replacing channel initializers; you can safely ignore the following warning.");
-        HAProxyDetectorInitializer<Channel> newInitializer = new HAProxyDetectorInitializer<>(originalInitializer);
-        holderType.getMethod("set", ChannelInitializer.class).invoke(holder, newInitializer);
+        DetectorInitializer<Channel> newInitializer =
+            new DetectorInitializer<>(logger, originalInitializer);
+        MethodHandle set = MethodHandles.lookup().unreflect(holderType.getMethod("set", ChannelInitializer.class));
+        try {
+            logger.info("Replacing channel initializer; you can safely ignore the following warning.");
+            // We use MethodHandle here because it has a cleaner stacktrace
+            // for ChannelInitializerHolder.set() to display
+            set.invoke(holder, newInitializer);
+        } catch (Throwable e) {
+            sneakyThrow(e);
+        }
     }
 
-    static class HAProxyDetectorInitializer<C extends Channel> extends ChannelInitializer<C> {
+    static class DetectorInitializer<C extends Channel> extends ChannelInitializer<C> {
         static final MethodHandle INIT_CHANNEL;
 
         static {
@@ -88,9 +115,11 @@ public final class VelocityMain {
             INIT_CHANNEL = handle;
         }
 
+        private final Logger logger;
         private final ChannelInitializer<C> delegate;
 
-        HAProxyDetectorInitializer(ChannelInitializer<C> delegate) {
+        DetectorInitializer(@NotNull Logger logger, @NotNull ChannelInitializer<C> delegate) {
+            this.logger = logger;
             this.delegate = delegate;
         }
 
@@ -109,8 +138,8 @@ public final class VelocityMain {
 
             try {
                 HAProxyMessageDecoder decoder = pipeline.get(HAProxyMessageDecoder.class);
-                pipeline.replace(decoder, "haproxy-detector", new HAProxyDetectorHandler());
-            } catch (NoSuchElementException e) {
+                pipeline.replace(decoder, "haproxy-detector", new HAProxyDetectorHandler(logger));
+            } catch (NoSuchElementException | NullPointerException e) {
                 throw new RuntimeException("HAProxy support is not enabled", e);
             }
         }
