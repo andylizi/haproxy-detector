@@ -72,7 +72,7 @@ public final class BungeeMain extends Plugin implements Listener {
     }
 
     @Override
-    @SuppressWarnings({ "unchecked", "deprecation" })
+    @SuppressWarnings("unchecked")
     public void onEnable() {
         try {
             Path path = this.getDataFolder().toPath().resolve("whitelist.conf");
@@ -121,24 +121,23 @@ public final class BungeeMain extends Plugin implements Listener {
         }
 
         try {
-            class TrackingStatsListener implements Listener {
-                @EventHandler
-                public void onLogin(PostLoginEvent event) {
-                    ConnectionStats.trackLogin(event.getPlayer().getSocketAddress());
-                }
-
-                @EventHandler
-                public void onDisconnect(PlayerDisconnectEvent event) {
-                    ConnectionStats.trackDisconnect(event.getPlayer().getSocketAddress());
-                }
-            }
-
             ProxyServer.getInstance().getPluginManager().registerListener(this, new TrackingStatsListener());
-
             Metrics metrics = new Metrics(this, 12605);
             ConnectionStats.createCharts().forEach(metrics::addCustomChart);
         } catch (Throwable t) {
             logger.log(Level.WARNING, "Failed to start metrics", t);
+        }
+    }
+
+    public static class TrackingStatsListener implements Listener {
+        @EventHandler
+        public void onLogin(PostLoginEvent event) {
+            ConnectionStats.trackLogin(event.getPlayer().getSocketAddress());
+        }
+
+        @EventHandler
+        public void onDisconnect(PlayerDisconnectEvent event) {
+            ConnectionStats.trackDisconnect(event.getPlayer().getSocketAddress());
         }
     }
 

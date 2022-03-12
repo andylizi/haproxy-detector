@@ -74,24 +74,23 @@ public final class BukkitMain extends JavaPlugin {
         }
 
         try {
-            class TrackingStatsListener implements Listener {
-                @EventHandler
-                public void onLogin(PlayerLoginEvent event) {
-                    ConnectionStats.trackLogin(event.getPlayer().getAddress());
-                }
-
-                @EventHandler
-                public void onDisconnect(PlayerQuitEvent event) {
-                    ConnectionStats.trackDisconnect(event.getPlayer().getAddress());
-                }
-            }
-
             getServer().getPluginManager().registerEvents(new TrackingStatsListener(), this);
-
             Metrics metrics = new Metrics(this, 12604);
             ConnectionStats.createCharts().forEach(metrics::addCustomChart);
         } catch (Throwable t) {
             logger.log(Level.WARNING, "Failed to start metrics", t);
+        }
+    }
+
+    public static class TrackingStatsListener implements Listener {
+        @EventHandler
+        public void onLogin(PlayerLoginEvent event) {
+            ConnectionStats.trackLogin(event.getPlayer().getAddress());
+        }
+
+        @EventHandler
+        public void onDisconnect(PlayerQuitEvent event) {
+            ConnectionStats.trackDisconnect(event.getPlayer().getAddress());
         }
     }
 
