@@ -27,7 +27,7 @@ import java.util.NoSuchElementException;
 
 import static net.andylizi.haproxydetector.ReflectionUtil.sneakyThrow;
 
-@Plugin(id = "haproxy-detector", name = "HAProxyDetector", version = "3.0.1",
+@Plugin(id = "haproxy-detector", name = "HAProxyDetector", version = "3.0.2",
     url = "https://github.com/andylizi/haproxy-detector",
     description = "Enables proxied and direct connections both at the same time.",
     authors = {"andylizi"})
