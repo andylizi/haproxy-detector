@@ -35,17 +35,12 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.util.AttributeKey;
-import net.andylizi.haproxydetector.ConnectionStats;
 import net.andylizi.haproxydetector.HAProxyDetectorHandler;
 import net.andylizi.haproxydetector.ProxyWhitelist;
 import net.andylizi.haproxydetector.ReflectionUtil;
-import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.config.ListenerInfo;
-import net.md_5.bungee.api.event.PlayerDisconnectEvent;
-import net.md_5.bungee.api.event.PostLoginEvent;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
-import net.md_5.bungee.event.EventHandler;
 import org.bstats.bungeecord.Metrics;
 
 import static net.andylizi.haproxydetector.ReflectionUtil.sneakyThrow;
@@ -121,23 +116,9 @@ public final class BungeeMain extends Plugin implements Listener {
         }
 
         try {
-            ProxyServer.getInstance().getPluginManager().registerListener(this, new TrackingStatsListener());
-            Metrics metrics = new Metrics(this, 12605);
-            ConnectionStats.createCharts().forEach(metrics::addCustomChart);
+            new Metrics(this, 12605);
         } catch (Throwable t) {
             logger.log(Level.WARNING, "Failed to start metrics", t);
-        }
-    }
-
-    public static class TrackingStatsListener implements Listener {
-        @EventHandler
-        public void onLogin(PostLoginEvent event) {
-            ConnectionStats.trackLogin(event.getPlayer().getSocketAddress());
-        }
-
-        @EventHandler
-        public void onDisconnect(PlayerDisconnectEvent event) {
-            ConnectionStats.trackDisconnect(event.getPlayer().getSocketAddress());
         }
     }
 

@@ -2,8 +2,6 @@ package net.andylizi.haproxydetector.velocity;
 
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
-import com.velocitypowered.api.event.connection.DisconnectEvent;
-import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
@@ -13,7 +11,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
-import net.andylizi.haproxydetector.ConnectionStats;
 import net.andylizi.haproxydetector.ProxyWhitelist;
 import net.andylizi.haproxydetector.ReflectionUtil;
 import org.bstats.velocity.Metrics;
@@ -68,19 +65,8 @@ public final class VelocityMain {
         }
         ProxyWhitelist.whitelist = whitelist;
 
+        metricsFactory.make(this, 14442);
         inject();
-
-        try {
-            server.getEventManager().register(this, LoginEvent.class,
-                e -> ConnectionStats.trackLogin(e.getPlayer().getRemoteAddress()));
-            server.getEventManager().register(this, DisconnectEvent.class,
-                e -> ConnectionStats.trackDisconnect(e.getPlayer().getRemoteAddress()));
-
-            Metrics metrics = metricsFactory.make(this, 14442);
-            ConnectionStats.createCharts().forEach(metrics::addCustomChart);
-        } catch (Throwable t) {
-            logger.warn("Failed to start metrics", t);
-        }
     }
 
     private boolean isProxyEnabled() throws ReflectiveOperationException {
