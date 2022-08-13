@@ -1,19 +1,19 @@
 /*
  * Copyright (C) 2020 Andy Li
- * 
+ *
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
  * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU General Lesser Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 package net.andylizi.haproxydetector.bungee;
 
 import java.io.IOException;
@@ -25,6 +25,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.NoSuchElementException;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -48,7 +49,7 @@ import static net.andylizi.haproxydetector.ReflectionUtil.sneakyThrow;
 public final class BungeeMain extends Plugin implements Listener {
     static Logger logger;
     static Field serverChildField;
-    static MethodHandle proxyProtocolChecker;
+    static Predicate<ListenerInfo> proxyProtocolChecker;
     static AttributeKey<ListenerInfo> listenerAttr;
     ChannelInitializer<Channel> originalChildInitializer;
 
@@ -57,8 +58,16 @@ public final class BungeeMain extends Plugin implements Listener {
         logger = getLogger();
 
         try {
-            proxyProtocolChecker = MethodHandles.lookup().findVirtual(ListenerInfo.class, "isProxyProtocol",
+            MethodHandle handle = MethodHandles.lookup().findVirtual(ListenerInfo.class, "isProxyProtocol",
                     MethodType.methodType(boolean.class));
+            proxyProtocolChecker = (info) -> {
+                try {
+                    return (boolean) handle.invokeExact(info);
+                } catch (Throwable e) {
+                    sneakyThrow(e);
+                    return false;
+                }
+            };
         } catch (NoSuchMethodException ignored) {
             proxyProtocolChecker = null;
         } catch (ReflectiveOperationException e) {
@@ -103,14 +112,7 @@ public final class BungeeMain extends Plugin implements Listener {
 
         if (proxyProtocolChecker != null) {
             if (Stream.concat(getProxy().getConfigurationAdapter().getListeners().stream(),
-                    getProxy().getConfig().getListeners().stream()).noneMatch(l -> {
-                        try {
-                            return (boolean) proxyProtocolChecker.invokeExact(l);
-                        } catch (Throwable e) {
-                            sneakyThrow(e);
-                            return false;
-                        }
-                    })) {
+                    getProxy().getConfig().getListeners().stream()).noneMatch(proxyProtocolChecker)) {
                 logger.warning("Proxy protocol is disabled, the plugin may not work correctly!");
             }
         }
@@ -164,14 +166,7 @@ public final class BungeeMain extends Plugin implements Listener {
             if (proxyProtocolChecker != null) {
                 ListenerInfo listener = ch.attr(listenerAttr).get();
 
-                boolean isProxyProtocol;
-                try {
-                    isProxyProtocol = (boolean) proxyProtocolChecker.invokeExact(listener);
-                } catch (Throwable e) {
-                    sneakyThrow(e);
-                    return;
-                }
-                if (!isProxyProtocol) {
+                if (!proxyProtocolChecker.test(listener)) {
                     return; // only proceed if listener has proxy protocol enabled
                 }
             }
