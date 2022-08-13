@@ -35,6 +35,7 @@ import io.netty.channel.*;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.util.AttributeKey;
 import net.andylizi.haproxydetector.HAProxyDetectorHandler;
+import net.andylizi.haproxydetector.MetricsId;
 import net.andylizi.haproxydetector.ProxyWhitelist;
 import net.md_5.bungee.api.config.ListenerInfo;
 import net.md_5.bungee.api.plugin.Listener;
@@ -125,7 +126,8 @@ public final class BungeeMain extends Plugin implements Listener {
         }
 
         try {
-            new Metrics(this, 12605);
+            Metrics metrics = new Metrics(this, 12605);
+            metrics.addCustomChart(MetricsId.createWhitelistCountChart());
         } catch (Throwable t) {
             logger.log(Level.WARNING, "Failed to start metrics", t);
         }

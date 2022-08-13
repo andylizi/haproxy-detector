@@ -11,6 +11,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
+import net.andylizi.haproxydetector.MetricsId;
 import net.andylizi.haproxydetector.ProxyWhitelist;
 import net.andylizi.haproxydetector.ReflectionUtil;
 import org.bstats.velocity.Metrics;
@@ -65,8 +66,14 @@ public final class VelocityMain {
         }
         ProxyWhitelist.whitelist = whitelist;
 
-        metricsFactory.make(this, 14442);
         inject();
+
+        try {
+            Metrics metrics = metricsFactory.make(this, 14442);
+            metrics.addCustomChart(MetricsId.createWhitelistCountChart());
+        } catch (Throwable t) {
+            logger.warn("Failed to start metrics", t);
+        }
     }
 
     private boolean isProxyEnabled() throws ReflectiveOperationException {

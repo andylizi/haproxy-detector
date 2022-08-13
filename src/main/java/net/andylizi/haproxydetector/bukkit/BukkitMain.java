@@ -7,7 +7,9 @@ import java.util.logging.Logger;
 
 import com.comphenix.protocol.ProtocolLibrary;
 
+import net.andylizi.haproxydetector.MetricsId;
 import net.andylizi.haproxydetector.ProxyWhitelist;
+import org.bstats.charts.SimplePie;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bstats.bukkit.Metrics;
 
@@ -63,7 +65,10 @@ public final class BukkitMain extends JavaPlugin {
         }
 
         try {
-            new Metrics(this, 12604);
+            Metrics metrics = new Metrics(this, 12604);
+            metrics.addCustomChart(MetricsId.createWhitelistCountChart());
+            metrics.addCustomChart(new SimplePie(MetricsId.KEY_PROTOCOLLIB_VERSION,
+                    () -> ProtocolLibrary.getPlugin().getDescription().getVersion()));
         } catch (Throwable t) {
             logger.log(Level.WARNING, "Failed to start metrics", t);
         }
