@@ -4,5 +4,8 @@ version: ${project.version}
 author: andylizi
 load: STARTUP
 depend: [ProtocolLib]
+# This plugin is universal and should support every Minecraft version.
+# If you're getting errors regarding the API version, feel free to change it to whatever you want.
+api-version: 1.13
 awareness:
     - !@UTF8
