@@ -21,24 +21,21 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelPipeline;
+import com.google.common.collect.ForwardingSet;
+import io.netty.channel.*;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.util.AttributeKey;
 import net.andylizi.haproxydetector.HAProxyDetectorHandler;
 import net.andylizi.haproxydetector.ProxyWhitelist;
-import net.andylizi.haproxydetector.ReflectionUtil;
 import net.md_5.bungee.api.config.ListenerInfo;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
@@ -48,10 +45,11 @@ import static net.andylizi.haproxydetector.ReflectionUtil.sneakyThrow;
 
 public final class BungeeMain extends Plugin implements Listener {
     static Logger logger;
-    static Field serverChildField;
     static Predicate<ListenerInfo> proxyProtocolChecker;
     static AttributeKey<ListenerInfo> listenerAttr;
-    ChannelInitializer<Channel> originalChildInitializer;
+    static Field initMapField;
+    ChannelInitializer<Channel> serverChild;
+    Set<ChannelHandlerContext> originalInitMap;
 
     @Override
     public void onLoad() {
@@ -99,12 +97,21 @@ public final class BungeeMain extends Plugin implements Listener {
                     Thread.currentThread().getContextClassLoader());
             listenerAttr = (AttributeKey<ListenerInfo>) pipelineUtilsClass.getField("LISTENER").get(null);
 
-            serverChildField = pipelineUtilsClass.getField("SERVER_CHILD");
-            ReflectionUtil.setModifiers(serverChildField, serverChildField.getModifiers() & ~Modifier.FINAL);
-            serverChildField.setAccessible(true);
+            // Here, we need to hijack the channel initializer for BC listeners.
+            //
+            // Originally I tried modifying the value of `PipelineUtils.SERVER_CHILD`,
+            // replacing it with our own. But this approach no longer works in JDK 18.
+            //
+            // Instead of hijacking `SERVER_CHILD` itself, we're going to replace its `initMap`,
+            // whose `add` method will be called internally every time before `initChannel`.
+            this.serverChild = (ChannelInitializer<Channel>) pipelineUtilsClass.getField(
+                    "SERVER_CHILD").get(null);
+            initMapField = ChannelInitializer.class.getDeclaredField("initMap");
+            initMapField.setAccessible(true);
 
-            originalChildInitializer = (ChannelInitializer<Channel>) serverChildField.get(null);
-            serverChildField.set(null, new DetectorInitializer<>(originalChildInitializer));
+            Set<ChannelHandlerContext> originalInitMap = (Set<ChannelHandlerContext>) initMapField.get(serverChild);
+            Set<ChannelHandlerContext> myInitMap = new DetectorInitSet(originalInitMap);
+            initMapField.set(serverChild, myInitMap);
         } catch (Throwable e) {
             sneakyThrow(e);
             return;
@@ -126,49 +133,48 @@ public final class BungeeMain extends Plugin implements Listener {
 
     @Override
     public void onDisable() {
-        if (serverChildField != null && originalChildInitializer != null) {
+        if (initMapField != null && serverChild != null && originalInitMap != null) {
             try {
-                serverChildField.set(null, originalChildInitializer);
-                originalChildInitializer = null;
-            } catch (ReflectiveOperationException ignored) {
+                initMapField.set(serverChild, originalInitMap);
+                originalInitMap = null;
+                serverChild = null;
+            } catch (Throwable ignored) {
             }
         }
     }
 
-    static class DetectorInitializer<C extends Channel> extends ChannelInitializer<C> {
-        static MethodHandle initChannelHandle;
+    static class DetectorInitSet extends ForwardingSet<ChannelHandlerContext> {
+        private final Set<ChannelHandlerContext> delegate;
 
-        static {
-            try {
-                Method m = ChannelInitializer.class.getDeclaredMethod("initChannel", Channel.class);
-                m.setAccessible(true);
-                initChannelHandle = MethodHandles.lookup().unreflect(m);
-            } catch (ReflectiveOperationException e) {
-                sneakyThrow(e);
-            }
-        }
-
-        private final MethodHandle delegateInitHandle;
-
-        public DetectorInitializer(ChannelInitializer<C> delegateInitializer) {
-            delegateInitHandle = initChannelHandle.bindTo(delegateInitializer);
+        public DetectorInitSet(Set<ChannelHandlerContext> delegate) {
+            this.delegate = delegate;
         }
 
         @Override
-        public void initChannel(C ch) {
-            try {
-                delegateInitHandle.invoke(ch);
-            } catch (Throwable e) {
-                sneakyThrow(e);
-                return;
+        protected Set<ChannelHandlerContext> delegate() {
+            return this.delegate;
+        }
+
+        @Override
+        public boolean add(ChannelHandlerContext ctx) {
+            if (super.add(ctx)) {
+                // Delay our logic until after the original one was executed
+                final Channel channel = ctx.channel();
+                ctx.executor().execute(() -> initChannel(channel));
+                return true;
+            } else {
+                return false;
             }
+        }
 
-            if (proxyProtocolChecker != null) {
-                ListenerInfo listener = ch.attr(listenerAttr).get();
+        @Override
+        public boolean addAll(Collection<? extends ChannelHandlerContext> collection) {
+            return standardAddAll(collection);
+        }
 
-                if (!proxyProtocolChecker.test(listener)) {
-                    return; // only proceed if listener has proxy protocol enabled
-                }
+        private void initChannel(Channel ch) {
+            if (proxyProtocolChecker != null && !proxyProtocolChecker.test(ch.attr(listenerAttr).get())) {
+                return; // only proceed if listener has proxy protocol enabled
             }
 
             ChannelPipeline pipeline = ch.pipeline();
