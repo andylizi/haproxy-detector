@@ -43,4 +43,13 @@ public final class ReflectionUtil {
         }
         throw new NoSuchFieldException("field with type " + type.getName() + " in " + cls.getName());
     }
+
+    public static boolean hasClass(String className) {
+        try {
+            Class.forName(className);
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
 }
