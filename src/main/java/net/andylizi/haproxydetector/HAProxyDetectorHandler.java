@@ -77,6 +77,7 @@ public class HAProxyDetectorHandler extends ByteToMessageDecoder {
                         try {
                             pipeline.addAfter("haproxy-decoder", "haproxy-handler", haproxyHandler);
                         } catch (IllegalArgumentException ignored) {
+                            // handler already exists
                         } catch (NoSuchElementException e) {  // Not sure why but...
                             if (pipeline.get("timeout") != null) {
                                 pipeline.addAfter("timeout", "haproxy-decoder", new HAProxyMessageDecoder());

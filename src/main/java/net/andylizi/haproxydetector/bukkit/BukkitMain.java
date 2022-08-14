@@ -2,11 +2,15 @@ package net.andylizi.haproxydetector.bukkit;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.comphenix.protocol.ProtocolLibrary;
 
+import com.comphenix.protocol.utility.MinecraftReflection;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelPipeline;
 import net.andylizi.haproxydetector.MetricsId;
 import net.andylizi.haproxydetector.ProxyWhitelist;
 import org.bstats.charts.SimplePie;
@@ -50,16 +54,21 @@ public final class BukkitMain extends JavaPlugin {
             this.setEnabled(false);
             return;
         }
-
-        if (ReflectionUtil.hasClass("com.comphenix.protocol.injector.netty.ProtocolInjector")) {
-            injectionStrategy = new InjectionStrategy1();
-        } else {
-            throw new UnsupportedOperationException(
-                    "unsupported ProtocolLib version " + ProtocolLibrary.getPlugin().getDescription().getVersion());
-        }
+        String plVersion = ProtocolLibrary.getPlugin().getDescription().getVersion();
 
         try {
+            if (ReflectionUtil.hasClass("com.comphenix.protocol.injector.netty.ProtocolInjector")) {
+                injectionStrategy = createInjectionStrategy1();
+            } else if (ReflectionUtil.hasClass(
+                    "com.comphenix.protocol.injector.netty.manager.NetworkManagerInjector")) {
+                injectionStrategy = createInjectionStrategy2();
+            } else {
+                throw new UnsupportedOperationException("unsupported ProtocolLib version " + plVersion);
+            }
+
             injectionStrategy.inject();
+        } catch (ClassNotFoundException | NoClassDefFoundError e) {
+            throw new UnsupportedOperationException("unsupported ProtocolLib version " + plVersion, e);
         } catch (ReflectiveOperationException e) {
             sneakyThrow(e);
         }
@@ -74,6 +83,16 @@ public final class BukkitMain extends JavaPlugin {
         }
     }
 
+    // Use separated methods to make sure the strategy classes won't be loaded
+    // until they're actually used.
+    private static InjectionStrategy createInjectionStrategy1() throws ReflectiveOperationException {
+        return new InjectionStrategy1(logger);
+    }
+
+    private static InjectionStrategy createInjectionStrategy2() throws ReflectiveOperationException {
+        return new InjectionStrategy2(logger);
+    }
+
     @Override
     public void onDisable() {
         if (injectionStrategy != null) {
@@ -82,5 +101,23 @@ public final class BukkitMain extends JavaPlugin {
             } catch (Throwable ignored) {
             }
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    static ChannelHandler getNetworkManager(ChannelPipeline pipeline) {
+        Class<? extends ChannelHandler> networkManagerClass = (Class<? extends ChannelHandler>) MinecraftReflection.getNetworkManagerClass();
+        ChannelHandler networkManager = null;
+        for (Map.Entry<String, ChannelHandler> entry : pipeline) {
+            if (networkManagerClass.isAssignableFrom(entry.getValue().getClass())) {
+                networkManager = entry.getValue();
+                break;
+            }
+        }
+
+        if (networkManager == null) {
+            throw new IllegalArgumentException("NetworkManager not found in channel pipeline " + pipeline.names());
+        }
+
+        return networkManager;
     }
 }

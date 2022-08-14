@@ -10,6 +10,7 @@ import java.util.logging.Level;
 import com.comphenix.protocol.reflect.FuzzyReflection;
 import com.comphenix.protocol.utility.MinecraftReflection;
 
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.ChannelHandler.Sharable;
@@ -21,7 +22,7 @@ class HAProxyMessageHandler extends SimpleChannelInboundHandler<HAProxyMessage> 
     private static volatile MethodHandle freeAddressSetter;
     private final MethodHandle addressSetter;
 
-    public HAProxyMessageHandler(Object networkManager) {
+    public HAProxyMessageHandler(ChannelHandler networkManager) {
         if (freeAddressSetter == null) {
             synchronized (HAProxyMessageHandler.class) {
                 if (freeAddressSetter == null) {
@@ -36,7 +37,7 @@ class HAProxyMessageHandler extends SimpleChannelInboundHandler<HAProxyMessage> 
                         freeAddressSetter = MethodHandles.lookup().unreflectSetter(f);
                     } catch (IllegalAccessException e) {
                         sneakyThrow(e);
-                        throw new AssertionError("dead code");
+                        throw new AssertionError("unreachable");
                     }
                 }
             }
@@ -55,5 +56,10 @@ class HAProxyMessageHandler extends SimpleChannelInboundHandler<HAProxyMessage> 
         } catch (Throwable e) {
             sneakyThrow(e);
         }
+    }
+
+    @Override
+    public boolean isSharable() {
+        return true;
     }
 }
