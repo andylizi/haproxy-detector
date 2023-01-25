@@ -46,7 +46,7 @@ YesIReallyWantToDisableWhitelistItsExtremelyDangerousButIKnowWhatIAmDoing!!!
 
 #### BungeeCord
 
-`proxy_protocol` needs to be enabled in BC config for this plugin to work.
+`proxy_protocol` needs to be enabled in BC `config.yml` for this plugin to work. (Not to be confused with the similar option in `paper.yml`)
 
 Older versions of BC can in theory use [BungeeProxy](https://github.com/MinelinkNetwork/BungeeProxy) in parallel
 with this plugin, but it hasn't been tested yet. Feedback is welcomed.
@@ -54,7 +54,11 @@ with this plugin, but it hasn't been tested yet. Feedback is welcomed.
 #### Spigot and its derivatives
 
 [ProtocolLib](https://github.com/dmulloy2/ProtocolLib) is a required dependency.
-This plugin was developed using ProtocolLib v4.8.0; please try that version first if there are any errors.
+This plugin was developed using ProtocolLib v4.8.0; please try that version first if there are any errors. Check out [issue #3](https://github.com/andylizi/haproxy-detector/issues/3) for experimental support for ProtocolLib 5.0.
+
+#### Paper
+
+New versions of Paper have built-in HAProxy support (proxied connection only). It's not compatible with this plugin, so please disable the `proxy-protocol` option in `paper.yml`.
 
 #### Velocity
 
