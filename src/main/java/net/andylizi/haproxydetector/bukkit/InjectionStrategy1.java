@@ -2,17 +2,19 @@ package net.andylizi.haproxydetector.bukkit;
 
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
+import com.comphenix.protocol.error.ErrorReporter;
 import com.comphenix.protocol.injector.netty.ChannelListener;
-import com.comphenix.protocol.injector.netty.InjectionFactory;
 import com.comphenix.protocol.injector.netty.Injector;
-import com.comphenix.protocol.injector.netty.ProtocolInjector;
-import com.comphenix.protocol.injector.server.TemporaryPlayerFactory;
+import com.comphenix.protocol.injector.netty.channel.InjectionFactory;
+import com.comphenix.protocol.injector.netty.manager.NetworkManagerInjector;
+import com.comphenix.protocol.injector.temporary.TemporaryPlayerFactory;
 import com.comphenix.protocol.reflect.FuzzyReflection;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelPipeline;
 import net.andylizi.haproxydetector.HAProxyDetectorHandler;
 import net.andylizi.haproxydetector.ReflectionUtil;
+import org.bukkit.Server;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
@@ -24,7 +26,7 @@ public class InjectionStrategy1 implements InjectionStrategy {
     private final Logger logger;
 
     private Field injectorFactoryField;
-    private ProtocolInjector injector;
+    private NetworkManagerInjector injector;
     private InjectionFactory oldFactory;
 
     public InjectionStrategy1(Logger logger) {this.logger = logger;}
@@ -38,16 +40,16 @@ public class InjectionStrategy1 implements InjectionStrategy {
 
         ProtocolManager pm = ProtocolLibrary.getProtocolManager();
         Field injectorField = FuzzyReflection.fromObject(pm, true)
-                .getFieldByType("nettyInjector", ProtocolInjector.class);
+                .getFieldByType("nettyInjector", NetworkManagerInjector.class);
         injectorField.setAccessible(true);
-        injector = (ProtocolInjector) injectorField.get(pm);
+        injector = (NetworkManagerInjector) injectorField.get(pm);
 
         injectorFactoryField = FuzzyReflection.fromObject(injector, true)
                 .getFieldByType("factory", InjectionFactory.class);
         injectorFactoryField.setAccessible(true);
 
         oldFactory = (InjectionFactory) injectorFactoryField.get(injector);
-        InjectionFactory newFactory = new HAProxyInjectorFactory(oldFactory.getPlugin());
+        InjectionFactory newFactory = new HAProxyInjectorFactory(oldFactory.getPlugin(), oldFactory.getPlugin().getServer(), injector.getReporter());
         ReflectionUtil.copyState(InjectionFactory.class, oldFactory, newFactory);
         injectorFactoryField.set(injector, newFactory);
     }
@@ -63,8 +65,8 @@ public class InjectionStrategy1 implements InjectionStrategy {
     }
 
     static class HAProxyInjectorFactory extends InjectionFactory {
-        public HAProxyInjectorFactory(Plugin plugin) {
-            super(plugin);
+        public HAProxyInjectorFactory(Plugin plugin, Server server, ErrorReporter errorReporter ) {
+            super(plugin, server, errorReporter);
         }
 
         @Override
